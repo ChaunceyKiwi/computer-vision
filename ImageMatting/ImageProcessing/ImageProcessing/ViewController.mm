@@ -28,6 +28,7 @@ using namespace std;
     cv::Mat imgMat_m=[self cvMatFromUIImage:image_m];
     cv::Mat imgOutput = [self cvMatFromUIImage:image];
     
+    //Use Matting to get final image
     cv::Mat imgOutputAfterProcess = [self Matting:imgMat input2:imgMat_m];
     
     UIImage *image2 = [self UIImageFromCVMat:imgMat];
@@ -66,31 +67,38 @@ using namespace std;
     ch2_f = channelsFinal[1];
     ch3_f = channelsFinal[2];
     
+    //get the position where image is scribbled
     consts_map = (ch1 + ch2 +ch3) > 0.001;
     ch1 = ch1.mul(consts_map);
     ch2 = ch2.mul(consts_map);
     ch3 = ch3.mul(consts_map);
     
-    cv::Size s = input.size();
-    int rows = s.height;
-    int cols = s.width;
-    int channel = input.channels() - 1;
     
-    printf("%d\n",rows);
-    printf("%d\n",cols);
-    printf("%d\n",channel);
+/*          Debug Area        */
+//    cv::Size s = input.size();
+//    int rows = s.height;
+//    int cols = s.width;
+//    int channel = input.channels() - 1;
+//    
+//    printf("%d\n",rows);
+//    printf("%d\n",cols);
+//    printf("%d\n",channel);
+/*          Debug Area        */
     
+    //Apply alpha to image
     cv::Mat alpha = [self GetAlpha:input values:consts_map];
     ch1_f = ch1_f.mul(alpha);
     ch2_f = ch2_f.mul(alpha);
     ch3_f = ch3_f.mul(alpha);
     
+    //combine 3 channels to 1 matrix
     merge(channels,consts_vals);
     merge(channelsFinal,finalImage);
     
     return finalImage;
 }
 
+// Funtion used to get alpha of background and foreground
 - (cv::Mat) GetAlpha:(cv::Mat)input values:(cv::Mat)consts_map
 {
     cv::Mat temp;
@@ -104,6 +112,7 @@ using namespace std;
     return temp;
 }
 
+// Funtion used to get the value of matting laplacian
 - (cv::Mat) GetLaplacian:(cv::Mat)input values:(cv::Mat)consts_map
 {
     cv::Mat temp;
