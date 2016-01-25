@@ -9,3 +9,6 @@ The code is written by myself but the train of thought is derived from http://ww
 The functions which act the calculation is from the library of openCV.
 
 Have fun! :)
+
+# Note 
+1.erode skip

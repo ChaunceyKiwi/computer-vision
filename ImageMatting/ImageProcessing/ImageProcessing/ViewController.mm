@@ -49,7 +49,10 @@ using namespace std;
 
 - (cv::Mat)Matting:(cv::Mat)input input2:(cv::Mat)input_m
 {
-    cv::Mat temp,chSum,consts_map,consts_vals,finalImage;
+    int win_size = 1;
+    int h = 189,w = 235;
+    
+    cv::Mat temp,chSum,consts_map,consts_vals,finalImage,consts_map_sub;
     
     temp = abs(input - input_m);
     
@@ -69,10 +72,10 @@ using namespace std;
     
     //get the position where image is scribbled
     consts_map = (ch1 + ch2 +ch3) > 0.001;
-    ch1 = ch1.mul(consts_map);
+    ch1 = ch1.mul(consts_map); 
     ch2 = ch2.mul(consts_map);
     ch3 = ch3.mul(consts_map);
-    
+    consts_map = consts_map/255;
     
 /*          Debug Area        */
 //    cv::Size s = input.size();
@@ -105,9 +108,9 @@ using namespace std;
     
     cv::Mat A = cv::Mat::eye(189, 235, CV_8UC1);
     
-    temp = A;
+    cv::Mat Laplacian = [self GetLaplacian:input values:consts_map];
     
-    print(temp);
+    temp = A;
     
     return temp;
 }
@@ -115,9 +118,40 @@ using namespace std;
 // Funtion used to get the value of matting laplacian
 - (cv::Mat) GetLaplacian:(cv::Mat)input values:(cv::Mat)consts_map
 {
-    cv::Mat temp;
+    int win_size = 1,m,n,i,j,len;
+    cv::Mat temp,consts_map_sub,row_inds,col_inds,vals;
     
-    return temp;
+    //neb_size as the windows size (win_size is just the distance between center to border)
+    double neb_size = (win_size * 2 + 1) * (win_size * 2 + 1);
+    
+    cv::Size s = input.size();
+    int h = s.height;
+    int w = s.width;
+    int channel = input.channels() - 1;
+    
+    n = h; m = w;
+    double img_size = w * h;
+    double tlen;
+    
+    cv::Mat indsM = cv::Mat::zeros(h, w, CV_32S);
+    
+    for(i = 1; i <= w ;i++)
+        for(j = 1; j <= h; j++){
+            indsM.at<int>(j, i) = 189 * (i - 1) + j;
+    }
+    
+    consts_map_sub = consts_map.rowRange(win_size, h - (win_size+1)).colRange(win_size, w - (win_size+1));
+    
+    tlen = ((h - 2 * win_size) * (w - 2 * win_size) - cv::sum(consts_map_sub)[0]) * neb_size * neb_size;
+    
+    row_inds = cv::Mat::zeros(tlen, 1, CV_32S);
+    col_inds = cv::Mat::zeros(tlen, 1, CV_32S);
+    vals     = cv::Mat::zeros(tlen, 1, CV_32S);
+    len      = 0;
+
+    
+    
+    return indsM;
 }
 
 - (cv::Mat)cvMatFromUIImage:(UIImage *)image
