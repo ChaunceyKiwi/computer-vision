@@ -6,11 +6,13 @@
 //  Copyright © 2016 Chauncey. All rights reserved.
 //
 
+
 #import "ViewController.h"
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#define epsilon 0.0000001
 using namespace std;
 
 @interface ViewController ()
@@ -131,7 +133,7 @@ using namespace std;
     int channel = input.channels() - 1;
     
     n = h; m = w;
-    double img_size = w * h;
+    int img_size = w * h;
     double tlen;
     
     cv::Mat indsM = cv::Mat::zeros(h + 1, w + 1, CV_32S);
@@ -147,7 +149,7 @@ using namespace std;
     
     row_inds = cv::Mat::zeros(tlen, 1, CV_32S);
     col_inds = cv::Mat::zeros(tlen, 1, CV_32S);
-    vals     = cv::Mat::zeros(tlen, 1, CV_32S);
+    vals     = cv::Mat::zeros(tlen, 1, CV_64F);
     len      = 0;
     
     for (j = win_size + 1;j <= w - win_size;j++)
@@ -158,25 +160,30 @@ using namespace std;
             
             
             //all elements in the window whose center is (i,j) and add their index up to a line
-            win_inds = indsM.rowRange(i - win_size,i + win_size).colRange(j - win_size, j + win_size);
+            win_inds = indsM.rowRange(i - win_size,i + win_size + 1).colRange(j - win_size, j + win_size + 1);
             
-
-            col_sum  = cv::Mat::zeros(1,9,CV_32S);
-            col_sum.at<int>(1,1) = win_inds.at<int>(0,0);
-            col_sum.at<int>(1,2) = win_inds.at<int>(1,0);
-            col_sum.at<int>(1,3) = win_inds.at<int>(2,0);
-            col_sum.at<int>(1,4) = win_inds.at<int>(0,1);
-            col_sum.at<int>(1,5) = win_inds.at<int>(1,1);
-            col_sum.at<int>(1,6) = win_inds.at<int>(2,1);
-            col_sum.at<int>(1,7) = win_inds.at<int>(0,2);
-            col_sum.at<int>(1,8) = win_inds.at<int>(1,2);
-            col_sum.at<int>(1,9) = win_inds.at<int>(2,2);
+            cv::Mat col_sum  = cv::Mat::zeros(1,9,CV_64F);
+            
+            col_sum.at<double>(0,0) = double(win_inds.at<int>(0,0));
+            col_sum.at<double>(0,1) = double(win_inds.at<int>(1,0));
+            col_sum.at<double>(0,2) = double(win_inds.at<int>(2,0));
+            col_sum.at<double>(0,3) = double(win_inds.at<int>(0,1));
+            col_sum.at<double>(0,4) = double(win_inds.at<int>(1,1));
+            col_sum.at<double>(0,5) = double(win_inds.at<int>(2,1));
+            col_sum.at<double>(0,6) = double(win_inds.at<int>(0,2));
+            col_sum.at<double>(0,7) = double(win_inds.at<int>(1,2));
+            col_sum.at<double>(0,8) = double(win_inds.at<int>(2,2));
             
             win_inds = col_sum;
+//            print(col_sum);
+//            printf("\n");
+
+
+            
             //all elements in the window whose center is (i,j) and add their color up to a line
             winI = input.rowRange(i - win_size - 1,i + win_size).colRange(j - win_size - 1, j + win_size);
             
-            cv::Mat winI_temp  = cv::Mat::zeros(10,4,CV_8UC1);
+            cv::Mat winI_temp  = cv::Mat::zeros(9,3,CV_64F);
             
             vector<cv::Mat> channels(3);
             split(winI, channels);
@@ -184,90 +191,105 @@ using namespace std;
             cv::Mat ch2 = channels[1];
             cv::Mat ch3 = channels[2];
                         
-            for(int i = 0;i <= 8;i++){
-                winI_temp.at<char>(i+1,1) = ch1.at<char>(0,i);
-                winI_temp.at<char>(i+1,2) = ch2.at<char>(0,i);
-                winI_temp.at<char>(i+1,3) = ch3.at<char>(0,i);
-            }
+            
+            winI_temp.at<double>(0,0) = ch1.at<uchar>(0,0);
+            winI_temp.at<double>(1,0) = ch1.at<uchar>(1,0);
+            winI_temp.at<double>(2,0) = ch1.at<uchar>(2,0);
+            winI_temp.at<double>(3,0) = ch1.at<uchar>(0,1);
+            winI_temp.at<double>(4,0) = ch1.at<uchar>(1,1);
+            winI_temp.at<double>(5,0) = ch1.at<uchar>(2,1);
+            winI_temp.at<double>(6,0) = ch1.at<uchar>(0,2);
+            winI_temp.at<double>(7,0) = ch1.at<uchar>(1,2);
+            winI_temp.at<double>(8,0) = ch1.at<uchar>(2,2);
+            
+            winI_temp.at<double>(0,1) = ch2.at<uchar>(0,0);
+            winI_temp.at<double>(1,1) = ch2.at<uchar>(1,0);
+            winI_temp.at<double>(2,1) = ch2.at<uchar>(2,0);
+            winI_temp.at<double>(3,1) = ch2.at<uchar>(0,1);
+            winI_temp.at<double>(4,1) = ch2.at<uchar>(1,1);
+            winI_temp.at<double>(5,1) = ch2.at<uchar>(2,1);
+            winI_temp.at<double>(6,1) = ch2.at<uchar>(0,2);
+            winI_temp.at<double>(7,1) = ch2.at<uchar>(1,2);
+            winI_temp.at<double>(8,1) = ch2.at<uchar>(2,2);
+            
+            winI_temp.at<double>(0,2) = ch3.at<uchar>(0,0);
+            winI_temp.at<double>(1,2) = ch3.at<uchar>(1,0);
+            winI_temp.at<double>(2,2) = ch3.at<uchar>(2,0);
+            winI_temp.at<double>(3,2) = ch3.at<uchar>(0,1);
+            winI_temp.at<double>(4,2) = ch3.at<uchar>(1,1);
+            winI_temp.at<double>(5,2) = ch3.at<uchar>(2,1);
+            winI_temp.at<double>(6,2) = ch3.at<uchar>(0,2);
+            winI_temp.at<double>(7,2) = ch3.at<uchar>(1,2);
+            winI_temp.at<double>(8,2) = ch3.at<uchar>(2,2);
+            
+            
+
             
             //reshape winI. Each colomn as one kind of color depth of winI
-            winI = winI_temp;
+            winI = winI_temp/255;
+
             
             //get the mean value of matrix
-            cv::Mat win_mu = cv::Mat::zeros(4,2,CV_32F);
+            cv::Mat win_mu = cv::Mat::zeros(3,1,CV_64F);
             
             double sum1 = 0;
             double sum2 = 0;
             double sum3 = 0;
             
-            for(int i = 1;i <= 9;i++){
-                sum1 += int(winI.at<uchar>(i,1));
-                sum2 += int(winI.at<uchar>(i,2));
-                sum3 += int(winI.at<uchar>(i,3));
+            for(int i = 0;i <= 8;i++){
+                sum1 += winI.at<double>(i,0);
+                sum2 += winI.at<double>(i,1);
+                sum3 += winI.at<double>(i,2);
             }
             
-            win_mu.at<double>(1,1) = sum1/9;
-            win_mu.at<double>(2,1) = sum2/9;
-            win_mu.at<double>(3,1) = sum3/9;
             
-
+            win_mu.at<double>(0,0) = sum1/9;
+            win_mu.at<double>(1,0) = sum2/9;
+            win_mu.at<double>(2,0) = sum3/9;
             
             //get the variance value of matrix
+            cv::Mat win_mu_squ = win_mu.t();
             
-            cv::Mat win_mu_squ;
-            transpose(win_mu, win_mu_squ);
-            
-            printf("%lf ",win_mu.at<double>(0,0));
-            printf("%lf ",win_mu.at<double>(0,1));
-            printf("%lf ",win_mu.at<double>(0,2));
-            printf("%lf\n",win_mu.at<double>(0,3));
-            printf("%lf ",win_mu.at<double>(1,0));
-            printf("%lf ",win_mu.at<double>(1,1));
-            printf("%lf ",win_mu.at<double>(1,2));
-            printf("%lf\n",win_mu.at<double>(1,3));
+            cv::Mat multi = win_mu * win_mu_squ;
             
             
-            
-//            printf("%lf ",win_mu_squ.at<double>(0,0));
-//            printf("%lf ",win_mu_squ.at<double>(0,1));
-//            printf("%lf ",win_mu_squ.at<double>(0,2));
-//            printf("%lf\n",win_mu_squ.at<double>(0,3));
-//
-//            
-//            printf("%lf ",win_mu_squ.at<double>(1,0));
-//            printf("%lf ",win_mu_squ.at<double>(1,1));
-//            printf("%lf ",win_mu_squ.at<double>(1,2));
-//            printf("%lf\n",win_mu_squ.at<double>(1,3));
-            
-            
-            
-                cv::Size s = win_mu_squ.size();
-                int rows = s.height;
-                int cols = s.width;
-                int channel = input.channels() - 1;
-            
-                printf("%d\n",rows);
-                printf("%d\n",cols);
-            
-            printf("haha");
+            cv::Mat multi2 = winI.t() * winI / neb_size;
+            cv::Mat eye_c = cv::Mat::eye(channel,channel,CV_64F);
+            cv::Mat before_inv = multi2 - multi + epsilon/neb_size * eye_c;
+            cv::Mat win_var = before_inv.inv();
 
-           
-
-
-
+            winI = winI - repeat(win_mu_squ, neb_size, 1);
+            cv::Mat tvals = (1 + winI * win_var * winI.t())/neb_size;
+            tvals = tvals.reshape(0,neb_size*neb_size);
             
+            cv::Mat repe_col = repeat(win_inds.t(),1,neb_size).reshape(0, neb_size*neb_size);
+            cv::Mat repe_row = repeat(win_inds,neb_size,1).reshape(0, neb_size*neb_size);
+            cv::Mat putInRow = tvals.reshape(0,neb_size*neb_size);
+            //row_inds(1+len:neb_size^2+len)
             
-
-
-
-
-
-
+            for(int i = len;i <= neb_size*neb_size + len - 1;i++){
+                
+                row_inds.at<int>(i,0) = repe_row.at<double>(i,0);
+                col_inds.at<int>(i,0) = repe_col.at<double>(i,0);
+                vals.at<double>(i,0) = tvals.at<double>(i,0);
+            }
             
-
-
+            len=len+neb_size*neb_size;
         }
     
+        const int dims = 2;
+        int size[] = {img_size,img_size};
+        cv::SparseMat A = cv::SparseMat(dims, size, CV_64F);
+    
+    for(int i = 0;i < len ;i++){
+         A.ref<double>(row_inds.at<double>(i,0), col_inds.at<double>(i,0)) =  vals.at<double>(i,0);
+    }
+    
+//    cv::SparseMat sumA;
+//    
+//    cv::reduce(A, sumA, 2, CV_REDUCE_SUM);
+    
+
     
     
     return indsM;
