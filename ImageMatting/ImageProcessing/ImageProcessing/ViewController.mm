@@ -12,8 +12,20 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "../Eigen/SparseCore"
+#include "../Eigen/Core"
+#include "../Eigen/SparseCholesky"
+#include "../Eigen/Dense"
+#include "../Eigen/SparseQR"
+#include "../Eigen/IterativeLinearSolvers"
+
+
+
 #define epsilon 0.0000001
 using namespace std;
+typedef Eigen::SparseMatrix<double> SpMat;
+typedef Eigen::Triplet<double> T;
+std::vector<T> tripletList;
 
 @interface ViewController ()
 
@@ -79,6 +91,8 @@ using namespace std;
     ch2 = ch2.mul(consts_map);
     ch3 = ch3.mul(consts_map);
     consts_map = consts_map/255;
+    consts_vals = ch1/255;
+    
     
 /*          Debug Area        */
 //    cv::Size s = input.size();
@@ -92,40 +106,72 @@ using namespace std;
 /*          Debug Area        */
     
     //Apply alpha to image
-    cv::Mat alpha = [self GetAlpha:input values:consts_map];
+    
+    cv::Mat alpha = [self GetAlpha:input values:consts_map values2:consts_vals];
     ch1_f = ch1_f.mul(alpha);
     ch2_f = ch2_f.mul(alpha);
     ch3_f = ch3_f.mul(alpha);
     
     //combine 3 channels to 1 matrix
-    merge(channels,consts_vals);
     merge(channelsFinal,finalImage);
     
     return finalImage;
 }
 
 // Funtion used to get alpha of background and foreground
-- (cv::Mat) GetAlpha:(cv::Mat)input values:(cv::Mat)consts_map
+- (cv::Mat) GetAlpha:(cv::Mat)input values:(cv::Mat)consts_map values2:(cv::Mat)consts_vals
 {
-    cv::Mat temp;
+    cv::Size s = input.size();
+    int h = s.height;
+    int w = s.width;
+    int img_size = w * h;
+    int lambda = 100;
     
-    cv::Mat A = cv::Mat::eye(189, 235, CV_8UC1);
+    cv::Mat temp = cv::Mat::eye(189, 235, CV_8UC1);
+
     
-    cv::Mat Laplacian = [self GetLaplacian:input values:consts_map];
+    SpMat A = [self GetLaplacian:input values:consts_map];
     
-    temp = A;
+    SpMat D(img_size,img_size);
+    for(int i = 0; i < img_size; i++){
+        D.coeffRef(i,i) = (int)consts_map.at<char>(0, i);
+    }
+    
+    //x = (A+lambda*D)\(lambda*consts_vals(:));
+    
+    SpMat left = A + lambda * D;
+    
+    cv::Mat consts_vals_in_a_col;
+    cv::Mat transpo;
+    transpo = consts_vals.t();
+    consts_vals_in_a_col = transpo.reshape(1,img_size);
+    
+    Eigen::VectorXd right(img_size);
+    for(int i = 0;i < img_size;i++){
+            right(i) = lambda * consts_vals_in_a_col.at<char>(i,0);
+    }
+    
+    Eigen::VectorXd x(img_size);
+    
+    Eigen::SimplicialLDLT  <Eigen::SparseMatrix<double>> cg;
+    cg.compute(left);
+    x = cg.solve(right);
+    Eigen::VectorXd pro = left*x-right;
+    
+    
+    cout<<x<<endl;
     
     return temp;
 }
 
 // Funtion used to get the value of matting laplacian
-- (cv::Mat) GetLaplacian:(cv::Mat)input values:(cv::Mat)consts_map
+- (SpMat) GetLaplacian:(cv::Mat)input values:(cv::Mat)consts_map
 {
     int win_size = 1,m,n,i,j,len;
     cv::Mat temp,consts_map_sub,row_inds,col_inds,vals,win_inds,col_sum,winI;
     
     //neb_size as the windows size (win_size is just the distance between center to border)
-    double neb_size = (win_size * 2 + 1) * (win_size * 2 + 1);
+    int neb_size = (win_size * 2 + 1) * (win_size * 2 + 1);
     
     cv::Size s = input.size();
     int h = s.height;
@@ -136,11 +182,11 @@ using namespace std;
     int img_size = w * h;
     double tlen;
     
-    cv::Mat indsM = cv::Mat::zeros(h + 1, w + 1, CV_32S);
+    cv::Mat indsM = cv::Mat::zeros(h, w, CV_32S);
     
-    for(i = 1; i <= w ;i++)
-        for(j = 1; j <= h; j++){
-            indsM.at<int>(j, i) = 189 * (i - 1) + j;
+    for(i = 0; i <= w -1 ;i++)
+        for(j = 0; j <= h - 1; j++){
+            indsM.at<int>(j, i) = 189 * i + j + 1;
     }
     
     consts_map_sub = consts_map.rowRange(win_size, h - (win_size+1)).colRange(win_size, w - (win_size+1));
@@ -152,12 +198,11 @@ using namespace std;
     vals     = cv::Mat::zeros(tlen, 1, CV_64F);
     len      = 0;
     
-    for (j = win_size + 1;j <= w - win_size;j++)
-        for (i = win_size + 1;i <= h - win_size;i++){
+    for (j = win_size;j <= w - win_size - 1;j++)
+        for (i = win_size;i <= h - win_size - 1;i++){
             if ((int)consts_map.at<char>(i,j) == 1){
                 continue;
             }
-            
             
             //all elements in the window whose center is (i,j) and add their index up to a line
             win_inds = indsM.rowRange(i - win_size,i + win_size + 1).colRange(j - win_size, j + win_size + 1);
@@ -181,7 +226,7 @@ using namespace std;
 
             
             //all elements in the window whose center is (i,j) and add their color up to a line
-            winI = input.rowRange(i - win_size - 1,i + win_size).colRange(j - win_size - 1, j + win_size);
+            winI = input.rowRange(i - win_size,i + win_size + 1).colRange(j - win_size, j + win_size + 1);
             
             cv::Mat winI_temp  = cv::Mat::zeros(9,3,CV_64F);
             
@@ -268,31 +313,40 @@ using namespace std;
             //row_inds(1+len:neb_size^2+len)
             
             for(int i = len;i <= neb_size*neb_size + len - 1;i++){
-                
-                row_inds.at<int>(i,0) = repe_row.at<double>(i,0);
-                col_inds.at<int>(i,0) = repe_col.at<double>(i,0);
-                vals.at<double>(i,0) = tvals.at<double>(i,0);
+                row_inds.at<int>(i,0) = repe_row.at<double>(i - len,0);
+                col_inds.at<int>(i,0) = repe_col.at<double>(i - len,0);
+                vals.at<double>(i,0) = tvals.at<double>(i - len,0);
             }
             
             len=len+neb_size*neb_size;
         }
     
-        const int dims = 2;
-        int size[] = {img_size,img_size};
-        cv::SparseMat A = cv::SparseMat(dims, size, CV_64F);
+//        cv::Mat A = cv::Mat::zeros(img_size, img_size, CV_64F);
+    SpMat A(img_size,img_size);
+    SpMat matrixOfOne(img_size,1);
     
-    for(int i = 0;i < len ;i++){
-         A.ref<double>(row_inds.at<double>(i,0), col_inds.at<double>(i,0)) =  vals.at<double>(i,0);
+    for(int i = 0;i < img_size ;i++){
+        matrixOfOne.insert(i, 0) = 1;
     }
     
-//    cv::SparseMat sumA;
-//    
-//    cv::reduce(A, sumA, 2, CV_REDUCE_SUM);
+    tripletList.reserve(len);
+    for(int i = 0;i < len ;i++){
+        tripletList.push_back(T(row_inds.at<int>(i,0)-1,col_inds.at<int>(i,0)-1,vals.at<double>(i,0)));
+    }
     
-
+    A.setFromTriplets(tripletList.begin(), tripletList.end());
     
+    SpMat sumA = A * matrixOfOne;
     
-    return indsM;
+    SpMat sparse_mat(img_size,img_size);
+    
+    for(int i = 0; i < img_size; i++){
+        sparse_mat.coeffRef(i,i) = sumA.coeffRef(i, 0);
+    }
+    
+    A = sparse_mat - A;
+    
+    return A;
 }
 
 - (cv::Mat)cvMatFromUIImage:(UIImage *)image
