@@ -42,14 +42,14 @@ std::vector<T> tripletList;
     cv::Mat imgMat=[self cvMatFromUIImage:image];
     cv::Mat imgMat_m=[self cvMatFromUIImage:image_m];
     cv::Mat imgOutput = [self cvMatFromUIImage:image];
-
+    
     //Use Matting to get final image
     cv::Mat imgOutputAfterProcess = [self Matting:imgMat input2:imgMat_m];
     
     UIImage *image2 = [self UIImageFromCVMat:imgMat];
     UIImage *image2_m = [self UIImageFromCVMat:imgMat_m];
     UIImage *output = [self UIImageFromCVMat:imgOutputAfterProcess];
-
+    
     
     [_img setImage:image2];
     [_img_m setImage:image2_m];
@@ -73,7 +73,7 @@ std::vector<T> tripletList;
     
     cv::Mat ch1, ch2, ch3;
     cv::Mat ch1_f, ch2_f, ch3_f;
-
+    
     vector<cv::Mat> channels(3),channelsFinal(3);
     split(temp, channels);
     split(input,channelsFinal);
@@ -87,30 +87,35 @@ std::vector<T> tripletList;
     
     //get the position where image is scribbled
     consts_map = (ch1 + ch2 +ch3) > 0.001;
-    ch1 = ch1.mul(consts_map); 
+    ch1 = ch1.mul(consts_map);
     ch2 = ch2.mul(consts_map);
     ch3 = ch3.mul(consts_map);
     consts_map = consts_map/255;
     consts_vals = ch1/255;
     
     
-/*          Debug Area        */
-//    cv::Size s = input.size();
-//    int rows = s.height;
-//    int cols = s.width;
-//    int channel = input.channels() - 1;
-//    
-//    printf("%d\n",rows);
-//    printf("%d\n",cols);
-//    printf("%d\n",channel);
-/*          Debug Area        */
+    /*          Debug Area        */
+    //    cv::Size s = input.size();
+    //    int rows = s.height;
+    //    int cols = s.width;
+    //    int channel = input.channels() - 1;
+    //
+    //    printf("%d\n",rows);
+    //    printf("%d\n",cols);
+    //    printf("%d\n",channel);
+    /*          Debug Area        */
     
     //Apply alpha to image
     
     cv::Mat alpha = [self GetAlpha:input values:consts_map values2:consts_vals];
-    ch1_f = ch1_f.mul(alpha);
-    ch2_f = ch2_f.mul(alpha);
-    ch3_f = ch3_f.mul(alpha);
+    
+    for(int i = 0;i < h;i++)
+        for(int j = 0; j < w;j++)
+        {
+            ch1_f.at<uchar>(i,j) = (uchar)((int)ch1_f.at<uchar>(i,j) * alpha.at<double>(i,j));
+            ch2_f.at<uchar>(i,j) = (uchar)((int)ch2_f.at<uchar>(i,j) * alpha.at<double>(i,j));
+            ch3_f.at<uchar>(i,j) = (uchar)((int)ch3_f.at<uchar>(i,j) * alpha.at<double>(i,j));
+        }
     
     //combine 3 channels to 1 matrix
     merge(channelsFinal,finalImage);
@@ -127,39 +132,50 @@ std::vector<T> tripletList;
     int img_size = w * h;
     int lambda = 100;
     
-    cv::Mat temp = cv::Mat::eye(189, 235, CV_8UC1);
-
+    cv::Mat temp = cv::Mat::zeros(189, 235, CV_64F);
+    //
+    //
+    //    SpMat A = [self GetLaplacian:input values:consts_map];
+    //
+    //    SpMat D(img_size,img_size);
+    //    for(int i = 0; i < img_size; i++){
+    //        D.coeffRef(i,i) = (int)consts_map.at<char>(0, i);
+    //    }
+    //
+    //    //x = (A+lambda*D)\(lambda*consts_vals(:));
+    //
+    //    SpMat left = A + lambda * D;
+    //
+    //    cv::Mat consts_vals_in_a_col;
+    //    cv::Mat transpo;
+    //    transpo = consts_vals.t();
+    //    consts_vals_in_a_col = transpo.reshape(1,img_size);
+    //
+    //    Eigen::VectorXd right(img_size);
+    //    for(int i = 0;i < img_size;i++){
+    //        right(i) = lambda * consts_vals_in_a_col.at<char>(i,0);
+    //    }
+    //
+    //    Eigen::VectorXd x(img_size);
     
-    SpMat A = [self GetLaplacian:input values:consts_map];
+    //    Eigen::SimplicialLDLT  <Eigen::SparseMatrix<double>> cg;
+    //    cg.compute(left);
+    //    x = cg.solve(right);
+    //    Eigen::VectorXd pro = left*x-right;
     
-    SpMat D(img_size,img_size);
+    SpMat E(img_size,img_size);
     for(int i = 0; i < img_size; i++){
-        D.coeffRef(i,i) = (int)consts_map.at<char>(0, i);
+        E.coeffRef(i,i) = 1;
     }
     
-    //x = (A+lambda*D)\(lambda*consts_vals(:));
-    
-    SpMat left = A + lambda * D;
-    
-    cv::Mat consts_vals_in_a_col;
-    cv::Mat transpo;
-    transpo = consts_vals.t();
-    consts_vals_in_a_col = transpo.reshape(1,img_size);
-    
-    Eigen::VectorXd right(img_size);
-    for(int i = 0;i < img_size;i++){
-            right(i) = lambda * consts_vals_in_a_col.at<char>(i,0);
+    for(int i = 0;i < h;i++){
+        temp.at<double>(i,i) = E.coeffRef(i,i);
     }
     
-    Eigen::VectorXd x(img_size);
+    //    for(int i = 0;i < h;i++){
+    //        printf("%lf\n", temp.at<double>(i,i) );
+    //    }
     
-    Eigen::SimplicialLDLT  <Eigen::SparseMatrix<double>> cg;
-    cg.compute(left);
-    x = cg.solve(right);
-    Eigen::VectorXd pro = left*x-right;
-    
-    
-    cout<<x<<endl;
     
     return temp;
 }
@@ -187,7 +203,7 @@ std::vector<T> tripletList;
     for(i = 0; i <= w -1 ;i++)
         for(j = 0; j <= h - 1; j++){
             indsM.at<int>(j, i) = 189 * i + j + 1;
-    }
+        }
     
     consts_map_sub = consts_map.rowRange(win_size, h - (win_size+1)).colRange(win_size, w - (win_size+1));
     
@@ -220,10 +236,10 @@ std::vector<T> tripletList;
             col_sum.at<double>(0,8) = double(win_inds.at<int>(2,2));
             
             win_inds = col_sum;
-//            print(col_sum);
-//            printf("\n");
-
-
+            //            print(col_sum);
+            //            printf("\n");
+            
+            
             
             //all elements in the window whose center is (i,j) and add their color up to a line
             winI = input.rowRange(i - win_size,i + win_size + 1).colRange(j - win_size, j + win_size + 1);
@@ -235,7 +251,7 @@ std::vector<T> tripletList;
             cv::Mat ch1 = channels[0];
             cv::Mat ch2 = channels[1];
             cv::Mat ch3 = channels[2];
-                        
+            
             
             winI_temp.at<double>(0,0) = ch1.at<uchar>(0,0);
             winI_temp.at<double>(1,0) = ch1.at<uchar>(1,0);
@@ -268,11 +284,11 @@ std::vector<T> tripletList;
             winI_temp.at<double>(8,2) = ch3.at<uchar>(2,2);
             
             
-
+            
             
             //reshape winI. Each colomn as one kind of color depth of winI
             winI = winI_temp/255;
-
+            
             
             //get the mean value of matrix
             cv::Mat win_mu = cv::Mat::zeros(3,1,CV_64F);
@@ -302,7 +318,7 @@ std::vector<T> tripletList;
             cv::Mat eye_c = cv::Mat::eye(channel,channel,CV_64F);
             cv::Mat before_inv = multi2 - multi + epsilon/neb_size * eye_c;
             cv::Mat win_var = before_inv.inv();
-
+            
             winI = winI - repeat(win_mu_squ, neb_size, 1);
             cv::Mat tvals = (1 + winI * win_var * winI.t())/neb_size;
             tvals = tvals.reshape(0,neb_size*neb_size);
@@ -321,7 +337,7 @@ std::vector<T> tripletList;
             len=len+neb_size*neb_size;
         }
     
-//        cv::Mat A = cv::Mat::zeros(img_size, img_size, CV_64F);
+    //        cv::Mat A = cv::Mat::zeros(img_size, img_size, CV_64F);
     SpMat A(img_size,img_size);
     SpMat matrixOfOne(img_size,1);
     
