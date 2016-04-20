@@ -6,12 +6,10 @@ using namespace std;
     when offset = -2, do 'and' operation */
 
 int hardlim(int x1,int x2,int offset){
-  if(x1+x2+offset >= 0) return 1;
+  if(x1 + x2 + offset >= 0) return 1;
   else return 0;
 }
 
-
-//
 int main(void)
 {
   // Input layer
@@ -26,7 +24,7 @@ int main(void)
     b1[i] = hardlim(1 - a0[i],b0[i],-2);
   }
 
-  //output layer
+  // Output layer
   int output[4];
   for(int i = 0;i < 4;i++){
     output[i] = hardlim(a1[i],b1[i],-1);
