@@ -1,4 +1,4 @@
-function [rTable, bin_count] = build_RTable2(img)
+function [rTable, bin_count] = build_RTable_gray(img)
 img_grey = rgb2gray(img);
 BW = edge(img_grey,'Canny');
 BW = bwareaopen(BW, 30);

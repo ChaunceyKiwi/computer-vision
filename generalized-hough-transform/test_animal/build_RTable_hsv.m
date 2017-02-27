@@ -1,4 +1,4 @@
-function [rTable, bin_count] = build_RTable(img)
+function [rTable, bin_count] = build_RTable_hsv(img)
 img_hsv = rgb2hsv(img);
 img_grey = img_hsv(:,:,2);
 img_grey(img_grey < 80/255) = 0;
