@@ -14,8 +14,6 @@ img_gray(img_mask == 0) = 0;
 BW = edge(img_gray,'Canny');
 BW = bwareaopen(BW, 30);
 
-% imshow(BW);
-
 [~,Gdir] = imgradient(img_gray);
 
 % Iterate through all contour points
@@ -37,6 +35,7 @@ for i = 1 : size(BW, 1)
     end
 end
 
+% vote for possible center
 accumulator = zeros(size(img_gray));
 rotation_rad = degtorad(-rotation);
 rotate_matrix = [cos(rotation_rad), -sin(rotation_rad); ...
@@ -57,8 +56,7 @@ for i = 1 : size(contourPoints,1)
     end
 end
 
+% find largest values in the array as the locations of the objects desired
 threshold = 8;
-% accumulator(accumulator < threshold) = 0;
-% imshow(accumulator);
 [row,col] = find(accumulator >= threshold);
 pos = [row, col];

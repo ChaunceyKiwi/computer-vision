@@ -21,7 +21,7 @@ for i = 1 : size(BW, 1)
     end
 end
 
-% calculate possible center
+% vote for possible center
 accumulator = zeros(size(BW));
 rotation_rad = degtorad(-rotation);
 rotate_matrix = [cos(rotation_rad), -sin(rotation_rad); ...
