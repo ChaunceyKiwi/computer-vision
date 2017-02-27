@@ -1,4 +1,4 @@
-function pos = matching(testImage, rTable, bin_count, rotation)
+function pos = matching(testImage, rTable, bin_count, rotation, threshold)
 % Form an accumulator array
 img_grey = rgb2gray(testImage);
 BW = edge(img_grey,'Canny');
@@ -43,7 +43,6 @@ for i = 1 : size(contourPoints,1)
     end
 end
 
-threshold = 18;
 accumulator(accumulator < threshold) = 0;
 % imshow(accumulator);
 [row,col] = find(accumulator > threshold);
