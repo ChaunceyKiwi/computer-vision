@@ -10,7 +10,6 @@ BW = edge(img_grey,'Canny');
 % Use the centroid as the reference point
 ref = round([size(img_grey, 1)/2, size(img_grey, 2)/2]);
 % BW(ref(1),ref(2)) = 1;
-imshow(BW);
 
 % Iterate through all contour points
 % For each point get three piece of information
