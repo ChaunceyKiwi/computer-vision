@@ -1,7 +1,5 @@
-function pos = matching(testImage, rTable, bin_count, rotation, threshold)
+function pos = matching(img_grey, rTable, bin_count, rotation, threshold, BW)
 % Form an accumulator array
-img_grey = rgb2gray(testImage);
-BW = edge(img_grey,'Canny');
 [~,Gdir] = imgradient(img_grey);
 
 % Iterate through all contour points
@@ -23,7 +21,8 @@ for i = 1 : size(BW, 1)
     end
 end
 
-accumulator = zeros(size(img_grey));
+% calculate possible center
+accumulator = zeros(size(BW));
 rotation_rad = degtorad(-rotation);
 rotate_matrix = [cos(rotation_rad), -sin(rotation_rad); ...
     sin(rotation_rad), cos(rotation_rad)];
@@ -43,7 +42,7 @@ for i = 1 : size(contourPoints,1)
     end
 end
 
+% find largest values in the array as the locations of the objects desired
 accumulator(accumulator < threshold) = 0;
-% imshow(accumulator);
 [row,col] = find(accumulator > threshold);
 pos = [row, col];

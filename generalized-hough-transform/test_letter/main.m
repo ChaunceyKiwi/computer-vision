@@ -10,9 +10,13 @@ testImage = imread('./PA2-testimages/letters.png');
 [h, w, ~] = size(template);
 imshow(testImage);
 hold on;
+
+img_grey = rgb2gray(testImage);
+BW = edge(img_grey,'Canny');
+
 % rotate test image with counter-clockwise angle
-for angle = 1 : 4 : 359
-    pos = matching(testImage, rTable, bin_count, angle, threshold);
+for angle = 0 : 4 : 359
+    pos = matching(img_grey, rTable, bin_count, angle, threshold, BW);
     for i = 1 : size(pos, 1)
         rectangle('Position', [pos(i, 2) - w / 2, pos(i, 1) - h / 2, w, h],...
 	'EdgeColor','r', 'LineWidth', 3, 'Curvature',[1 1])
