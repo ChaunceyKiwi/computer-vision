@@ -1,4 +1,4 @@
-function pos = matching(testImage, rTable, bin_count, rotation)
+function pos = matching(testImage, rTable, bin_count, rotation, scale)
 deg_div = 2;
 
 % Form an accumulator array
@@ -46,7 +46,7 @@ for i = 1 : size(contourPoints,1)
     for j = 1 : bin_count(binIndex)
         deltaY = rTable(binIndex, j, 1);
         deltaX = rTable(binIndex, j, 2);
-        delta = rotate_matrix * [deltaY; deltaX];
+        delta = rotate_matrix * [deltaY; deltaX] / scale;
         targetY = round(contourPoints(i, 1) + delta(1));
         targetX = round(contourPoints(i, 2) + delta(2));
         if (targetY >= 1 && targetY <= size(accumulator, 1))
@@ -57,7 +57,7 @@ for i = 1 : size(contourPoints,1)
     end
 end
 
-threshold = 7;
+threshold = 8;
 % accumulator(accumulator < threshold) = 0;
 % imshow(accumulator);
 [row,col] = find(accumulator >= threshold);
