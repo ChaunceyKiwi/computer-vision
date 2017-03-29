@@ -8,8 +8,7 @@
 5. Apply threshold and non-maximum suppresion
 
 ## Demo: input and output
-![input](./test.jpg)
-![output](./output.png)
+![output](./output.jpg)
 
 ## Reference
 [https://github.com/gokhanozbulak/Harris-Detector](https://github.com/gokhanozbulak/Harris-Detector)
