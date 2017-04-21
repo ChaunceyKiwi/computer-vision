@@ -1,2 +1,3 @@
-# ComputerVision
-Here are the code about CV.
+# Computer Vision
+
+Here are some codes to do with the problems in the area of computer vision. 
